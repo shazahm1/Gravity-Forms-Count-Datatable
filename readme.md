@@ -28,6 +28,12 @@ The following parameters are valid for both shortcodes.
 - `dec_point` *string* :: The separator for the decimal point. Default: `.`
 - `thousands_sep` *string* :: The thousands separator. Default: `,`
 
+**NOTES:**
+
+- To filter entry count by the current logged in user set `created_by` to `current`.
+- Multiple field filters can be supplied in a shortcode by appending `_{+d}` to the `filter_field`, `filter_operator`, `filter_value` shortcode parameters. Example: `form_id='2' filter_field_1='3' filter_value_1='Developer' filter_field_2='5' filter_value_2='Undecided'`.
+   - You can add as many filters as you wish, simply increment the trailing digit.
+
 # Examples
 
 ## Display entry count of a Gravity Form by ID.
@@ -37,6 +43,10 @@ The following parameters are valid for both shortcodes.
 ## Display the entry count of a Gravity Form filtered by WP User ID.
 
 `[gf_count_datatable form_id='84' create_by='2']`
+
+## Display the entry count of a Gravity Form filtered by the currently logged in WP User.
+
+`[gf_count_datatable form_id='84' create_by='current']`
 
 ## Display total count of multiple Gravity Forms by ID.
 
