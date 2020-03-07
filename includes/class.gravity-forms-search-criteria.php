@@ -34,6 +34,11 @@ class Search_Criteria {
 	private $isRead = null;
 
 	/**
+	 * @var null|bool
+	 */
+	private $isStarred = null;
+
+	/**
 	 * @var string
 	 */
 	private $status = 'active';
@@ -66,6 +71,7 @@ class Search_Criteria {
 		$this->setDateEnd( $atts['end_date'], $atts['date_format'] );
 		$this->setFilterMode( $atts['filter_mode'] );
 		$this->setIsRead( $atts['is_read'] );
+		$this->setIsStarred( $atts['is_starred'] );
 
 		$this->addFiltersFromArray( $untrusted );
 	}
@@ -81,8 +87,8 @@ class Search_Criteria {
 			'status'           => 'active',
 			'filter_mode'      => 'all',
 			'created_by'       => '',
-			//'is_starred'       => '',
 			'is_read'          => null,
+			'is_starred'       => null,
 			//'is_approved'      => '',
 			'start_date'       => null,
 			'end_date'         => null,
@@ -378,7 +384,7 @@ class Search_Criteria {
 	}
 
 	/**
-	 * @return string
+	 * @return bool|null
 	 */
 	public function getIsRead() {
 
@@ -405,6 +411,38 @@ class Search_Criteria {
 		$isRead = filter_var( $isRead, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE );
 
 		$this->isRead = $isRead;
+
+		return $this;
+	}
+
+	/**
+	 * @return bool|null
+	 */
+	public function getIsStarred() {
+
+		return $this->isStarred;
+	}
+
+	/**
+	 * Set to `null` to remove is_starred criteria.
+	 *
+	 * @param bool|null|string $isStarred Filter entries based on whether or not the entry has been starred or not.
+	 *                                    Valid parameter values are bool, null, 0|1, yes|no.
+	 *
+	 * @return Search_Criteria
+	 */
+	public function setIsStarred( $isStarred ) {
+
+		if ( is_null( $isStarred ) ) {
+
+			$this->isStarred = null;
+
+			return $this;
+		}
+
+		$isStarred = filter_var( $isStarred, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE );
+
+		$this->isStarred = $isStarred;
 
 		return $this;
 	}
@@ -533,6 +571,22 @@ class Search_Criteria {
 		}
 	}
 
+	private function prepareIsStarred() {
+
+		$isStarred = $this->getIsStarred();
+
+		if ( is_bool( $isStarred ) ) {
+
+			$this->criteria['field_filters']['is_starred'] = array( 'key' => 'is_starred', 'value' => $isStarred );
+
+		} elseif ( array_key_exists( 'field_filters', $this->criteria ) &&
+		           array_key_exists( 'is_starred', $this->criteria['field_filters'] )
+		) {
+
+			unset( $this->criteria['field_filters']['is_starred'] );
+		}
+	}
+
 	/**
 	 * Prepare properties/create array for the GFAPI search criteria.
 	 */
@@ -544,6 +598,7 @@ class Search_Criteria {
 		$this->prepareFilterMode();
 		$this->prepareFormStatus();
 		$this->prepareIsRead();
+		$this->prepareIsStarred();
 	}
 
 	/**
