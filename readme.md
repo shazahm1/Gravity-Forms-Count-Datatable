@@ -10,10 +10,10 @@ Display the number of entries of a Gravity Form or display datatable of entries 
 The following parameters are valid for both shortcodes.
 
 - `form_id` *int*  **required** :: The Gravity Form ID to display the entry count. Multiple form ID's can be supplied.
-- `status` *string* :: The form status to count. Default `active`
+- `status` *string* :: The form status to count. Valid `all`|`active`|`inactive`|`trash` Default `active`
 - `created_by` *int* :: The WP User ID of Gravity Form entry.
 - `filter_field` *int* :: The field ID of the form.
-- `filter_operator` *string* :: The filter operator.
+- `filter_operator` *string* :: The filter operator. Default `=`
 - `filter_value` *string* :: The field value.
 - `filter_mode` *string* :: The filter mode. Valid `all`|`any` Default `all`
 - `start_date` *string* :: The start date to start counting form entries.
