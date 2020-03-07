@@ -29,6 +29,11 @@ class Search_Criteria {
 	private $filterMode = 'all';
 
 	/**
+	 * @var null|bool
+	 */
+	private $isRead = null;
+
+	/**
 	 * @var string
 	 */
 	private $status = 'active';
@@ -60,6 +65,7 @@ class Search_Criteria {
 		$this->setDateStart( $atts['start_date'], $atts['date_format'] );
 		$this->setDateEnd( $atts['end_date'], $atts['date_format'] );
 		$this->setFilterMode( $atts['filter_mode'] );
+		$this->setIsRead( $atts['is_read'] );
 
 		$this->addFiltersFromArray( $untrusted );
 	}
@@ -73,11 +79,10 @@ class Search_Criteria {
 
 		return array(
 			'status'           => 'active',
-			//'number_field'     => false,
 			'filter_mode'      => 'all',
 			'created_by'       => '',
 			//'is_starred'       => '',
-			//'is_read'          => '',
+			'is_read'          => null,
 			//'is_approved'      => '',
 			'start_date'       => null,
 			'end_date'         => null,
@@ -375,6 +380,38 @@ class Search_Criteria {
 	/**
 	 * @return string
 	 */
+	public function getIsRead() {
+
+		return $this->isRead;
+	}
+
+	/**
+	 * Set to `null` to remove is_read criteria.
+	 *
+	 * @param bool|null|string $isRead Filter entries based on whether or not the entry has been read or not.
+	 *                                 Valid parameter values are bool, null, 0|1, yes|no.
+	 *
+	 * @return Search_Criteria
+	 */
+	public function setIsRead( $isRead ) {
+
+		if ( is_null( $isRead ) ) {
+
+			$this->isRead = null;
+
+			return $this;
+		}
+
+		$isRead = filter_var( $isRead, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE );
+
+		$this->isRead = $isRead;
+
+		return $this;
+	}
+
+	/**
+	 * @return string
+	 */
 	public function getFormStatus() {
 
 		return $this->status;
@@ -480,6 +517,22 @@ class Search_Criteria {
 		}
 	}
 
+	private function prepareIsRead() {
+
+		$isRead = $this->getIsRead();
+
+		if ( is_bool( $isRead ) ) {
+
+			$this->criteria['field_filters']['is_read'] = array( 'key' => 'is_read', 'value' => $isRead );
+
+		} elseif ( array_key_exists( 'field_filters', $this->criteria ) &&
+		           array_key_exists( 'is_read', $this->criteria['field_filters'] )
+		) {
+
+			unset( $this->criteria['field_filters']['is_read'] );
+		}
+	}
+
 	/**
 	 * Prepare properties/create array for the GFAPI search criteria.
 	 */
@@ -490,6 +543,7 @@ class Search_Criteria {
 		$this->prepareDateEnd();
 		$this->prepareFilterMode();
 		$this->prepareFormStatus();
+		$this->prepareIsRead();
 	}
 
 	/**
