@@ -11,6 +11,8 @@ The following parameters are valid for both shortcodes.
 
 - `form_id` *int*  **required** :: The Gravity Form ID to display the entry count. Multiple form ID's can be supplied.
 - `status` *string* :: The form status to count. Valid `all`|`active`|`inactive`|`trash` Default `active`
+- `is_read` *string* :: Filter entry count by whether or not if the entry has been read. Valid `yes`|`no` Default both.
+- `is_starredd` *string* :: Filter entry count by whether or not if the entry has been starred. Valid `yes`|`no` Default both.
 - `created_by` *int* :: The WP User ID of Gravity Form entry.
 - `filter_field` *int* :: The field ID of the form.
 - `filter_operator` *string* :: The filter operator. Default `=`
