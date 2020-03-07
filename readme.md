@@ -1,11 +1,11 @@
 Display the number of entries of a Gravity Form or display datatable of entries sorted alphabetically by WP User with their submission count using shortcodes.
 
-#Shortcodes
+# Shortcodes
 
 - `[gf_count_entries]` :: Display the entry count by form ID.
 - `[gf_count_datatable]` :: Display the entry count by WP User by form ID.
  
-#Shortcode Parameters
+# Shortcode Parameters
 
 The following parameters are valid for both shortcodes.
 
@@ -28,7 +28,7 @@ The following parameters are valid for both shortcodes.
 - `dec_point` *string* :: The separator for the decimal point. Default: `.`
 - `thousands_sep` *string* :: The thousands separator. Default: `,`
 
-#Examples
+# Examples
 
 ## Display entry count of a Gravity Form by ID.
 
