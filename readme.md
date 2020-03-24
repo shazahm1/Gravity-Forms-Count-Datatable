@@ -83,6 +83,7 @@ The following parameters are valid for both shortcodes.
 
 - This Week
    - `[gf_count_datatable form_id=84 date_format='relative' start_date='-1 week sunday']`
+   - The relative date of `-1 week sunday` translates to 2020-03-22 00:00:00 (assuming a date of 3/24/2020). This would be the start of the Sunday day which would be 12:00am Sunday morning on the 12hr clock.
 
 - Last Month
    - `[gf_count_datatable form_id=84 date_format='relative' start_date='first day of last month' end_date='last day of last month']`
