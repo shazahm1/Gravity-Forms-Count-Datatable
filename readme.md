@@ -72,6 +72,9 @@ The following parameters are valid for both shortcodes.
 
 ## Filter entries based on relative dates.
 
+- Today
+   - `[gf_count_datatable form_id=84 date_format='relative' start_date='today']`
+
 - Since Yesterday
    - `[gf_count_datatable form_id=84 date_format='relative' start_date='yesterday']`
 
