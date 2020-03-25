@@ -30,6 +30,12 @@ The following parameters are valid for both shortcodes.
 - `dec_point` *string* :: The separator for the decimal point. Default: `.`
 - `thousands_sep` *string* :: The thousands separator. Default: `,`
 
+The following parameters are valid for the `[gf_count_datatable]` shortcode.
+
+- `thead` *string* :: The table column headers. Table column header values are delimited by a `|` (pipe). Default: `Name|Count`
+- `tfoot` *string* :: The table column footers. Table column footer values are delimited by a `|` (pipe). Default: `|%sum%`
+   - The `tfoot` parameter support two token. They are `%average%` and `%sum%`. The `%average%` token is replaced by the average of the total count. The `%sum%` token is replace by the total count.
+
 **NOTES:**
 
 - To filter entry count by the current logged in user set `created_by` to `current`.
