@@ -276,7 +276,7 @@ class Search_Criteria {
 			$date = new DateTime();
 			$time = strtotime( $dateString );
 
-			if ( false === $date ) {
+			if ( false === $time ) {
 
 				return false;
 			}
