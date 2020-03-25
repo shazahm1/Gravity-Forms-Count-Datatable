@@ -165,6 +165,8 @@ class Gravity_Forms_Count_Datatable {
 			'thousands_sep'    => ',',
 			'page_size'        => 10000, // Use page_size='20000' or higher in shortcode for more entries to count
 			'search'           => true,
+			'thead'            => 'Name|Count',
+			'tfoot'            => '|%sum%'
 			//'number_field'     => false,
 		);
 	}
@@ -204,8 +206,25 @@ class Gravity_Forms_Count_Datatable {
 		$atts['decimals']  = filter_var( $atts['decimals'], FILTER_SANITIZE_NUMBER_INT );
 		$atts['page_size'] = filter_var( $atts['page_size'], FILTER_SANITIZE_NUMBER_INT );
 
-		$atts['search'] = filter_var( $atts['search'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE );
-		$atts['search'] = is_null( $atts['search'] ) ? false : $atts['search'];
+		if ( 'gf_count_datatable' === $tag ) {
+
+			$thead = explode( '|', $atts['thead'] );
+			$thead = array_map( 'trim', $thead );
+			$thead = array_map( 'wp_kses_data', $thead );
+			$atts['thead'] = array_pad( $thead, 2, '' );
+
+			$tfoot = explode( '|', $atts['tfoot'] );
+			$tfoot = array_map( 'trim', $tfoot );
+			$tfoot = array_map( 'wp_kses_data', $tfoot );
+			$atts['tfoot'] = array_pad( $tfoot, 2, '' );
+
+			$atts['search'] = filter_var( $atts['search'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE );
+			$atts['search'] = is_null( $atts['search'] ) ? false : $atts['search'];
+
+		} else {
+
+			unset( $atts['search'], $atts['thead'], $atts['tfoot'] );
+		}
 
 		return $atts;
 	}
@@ -250,7 +269,7 @@ class Gravity_Forms_Count_Datatable {
 			}
 		}
 
-		return $this->countFormat( $count, $atts );
+		return $this->numberFormat( $count, $atts );
 	}
 
 	/**
@@ -323,10 +342,10 @@ class Gravity_Forms_Count_Datatable {
 		$records = $this->setUserAndSort( $records );
 
 		$html .= '<table>';
-		$html .= '<thead><tr><th>Name</th><th>Count</th></tr></thead>';
+		$html .= "<thead><tr><th>{$atts['thead'][0]}</th><th>{$atts['thead'][1]}</th></tr></thead>";
 		$html .= '<tbody>';
 
-		$total = 0;
+		$sum = 0;
 
 		foreach ( $records as $entry ) {
 
@@ -356,15 +375,29 @@ class Gravity_Forms_Count_Datatable {
 
 			}
 
-			$html .= "<td>{$entry['user']->get( 'full_name' )}</td><td>{$this->countFormat( $count, $atts )}</td>";
+			$html .= "<td>{$entry['user']->get( 'full_name' )}</td><td>{$this->numberFormat( $count, $atts )}</td>";
 
 			$html .= '</tr>';
 
-			$total += $count;
+			$sum += $count;
 		}
 
+		$average = $sum / count( $records );
+
+		$atts['tfoot'][1] = str_ireplace(
+			array(
+				'%average%',
+				'%sum%',
+			),
+			array(
+				$this->numberFormat( $average, $atts ),
+				$this->numberFormat( $sum, $atts ),
+			),
+			$atts['tfoot'][1]
+		);
+
 		$html .= '</tbody>';
-		$html .= "<tfoot><tr><th></th><th>{$this->countFormat( $total, $atts )}</th></tr></tfoot>";
+		$html .= "<tfoot><tr><th>{$atts['tfoot'][0]}</th><th>{$atts['tfoot'][1]}</th></tr></tfoot>";
 		$html .= '</table>';
 
 		return $html;
@@ -491,7 +524,7 @@ class Gravity_Forms_Count_Datatable {
 	/**
 	 * Format the count.
 	 *
-	 * @param float $count
+	 * @param float $number
 	 * @param array $atts {
 	 *      @type bool   $format        Whether or not to format the number.
 	 *      @type int    $decimals      Sets the number of decimal points.
@@ -501,14 +534,14 @@ class Gravity_Forms_Count_Datatable {
 	 *
 	 * @return float|string
 	 */
-	private function countFormat( float &$count, array $atts ) {
+	private function numberFormat( float &$number, array $atts ) {
 
 		if ( $atts['format'] ) {
 
-			$count = number_format( $count, $atts['decimals'], $atts['dec_point'], $atts['thousands_sep'] );
+			$number = number_format( $number, $atts['decimals'], $atts['dec_point'], $atts['thousands_sep'] );
 		}
 
-		return $count;
+		return $number;
 	}
 
 	private function parseRequest( $untrusted ) {
