@@ -35,24 +35,117 @@ add_action(
 		//
 		//GFForms::include_addon_framework();
 
-		new Gravity_Forms_Count_Datatable();
+		Gravity_Forms_Count_Datatable::init();
 	},
 	5
 );
 
 class Gravity_Forms_Count_Datatable {
 
-	public function __construct() {
+	const VERSION = '1.0';
+
+	/**
+	 * @var self Stores the instance of this class.
+	 *
+	 * @since  1.0
+	 */
+	private static $instance;
+
+	/**
+	 * @var string The absolute path this this file.
+	 *
+	 * @since  1.0
+	 */
+	private $file = '';
+
+	/**
+	 * @var string The URL to the plugin's folder.
+	 *
+	 * @since  1.0
+	 */
+	private $url = '';
+
+	/**
+	 * @var string The absolute path to this plugin's folder.
+	 *
+	 * @since  1.0
+	 */
+	private $path = '';
+
+	/**
+	 * @var string The basename of the plugin.
+	 *
+	 * @since 1.0
+	 */
+	private $basename = '';
+
+	public function __construct() {}
+
+	/**
+	 * The main plugin instance.
+	 *
+	 * @since  1.0
+	 *
+	 * @return self
+	 */
+	public static function init() {
+
+		if ( ! isset( self::$instance ) && ! ( self::$instance instanceof self ) ) {
+
+			self::$instance = $self = new self;
+
+			$self->file     = __FILE__;
+			$self->url      = plugin_dir_url( $self->file );
+			$self->path     = plugin_dir_path( $self->file );
+			$self->basename = plugin_basename( $self->file );
+
+			$self->loadDependencies();
+			$self->hooks();
+		}
+
+		return self::$instance;
+	}
+
+	/**
+	 * @return self
+	 */
+	public static function instance() {
+
+		return self::init();
+	}
+
+	private function loadDependencies() {
 
 		require_once( __DIR__ . '/includes/class.gravity-forms-search-criteria.php' );
-
-		$this->hooks();
 	}
 
 	private function hooks() {
 
 		add_shortcode( 'gf_count_entries', array( $this, 'countEntries' ) );
 		add_shortcode( 'gf_count_datatable', array( $this, 'countDatatable' ) );
+
+		add_action( 'wp_enqueue_scripts', array( $this, 'registerScripts' ) );
+	}
+
+	/**
+	 * @since 1.0
+	 *
+	 * @return string
+	 */
+	public function getBaseURL() {
+
+		return $this->url;
+	}
+
+	/**
+	 * Callback for the `wp_enqueue_scripts` action.
+	 */
+	public function registerScripts() {
+
+		$url = Gravity_Forms_Count_Datatable()->getBaseURL();
+
+		// If SCRIPT_DEBUG is set and TRUE load the non-minified JS files, otherwise, load the minified files.
+		$min = defined('SCRIPT_DEBUG') && SCRIPT_DEBUG ? '' : '.min';
 	}
 
 	/**
@@ -407,3 +500,13 @@ add_filter(
 	10,
 	4
 );
+
+/**
+ * @since 1.0
+ *
+ * @return Gravity_Forms_Count_Datatable
+ */
+function Gravity_Forms_Count_Datatable() {
+
+	return Gravity_Forms_Count_Datatable::instance();
+}
