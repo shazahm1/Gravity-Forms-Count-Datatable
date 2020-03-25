@@ -24,6 +24,7 @@ namespace Easy_Plugins\Gravity_Forms_Count_Datatable;
 use GFAPI;
 use GFForms;
 use WP_User;
+use WP_User_Query;
 
 add_action(
 	'gform_loaded',
@@ -163,6 +164,7 @@ class Gravity_Forms_Count_Datatable {
 			'dec_point'        => '.',
 			'thousands_sep'    => ',',
 			'page_size'        => 10000, // Use page_size='20000' or higher in shortcode for more entries to count
+			'search'           => true,
 			//'number_field'     => false,
 		);
 	}
@@ -201,6 +203,9 @@ class Gravity_Forms_Count_Datatable {
 
 		$atts['decimals']  = filter_var( $atts['decimals'], FILTER_SANITIZE_NUMBER_INT );
 		$atts['page_size'] = filter_var( $atts['page_size'], FILTER_SANITIZE_NUMBER_INT );
+
+		$atts['search'] = filter_var( $atts['search'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE );
+		$atts['search'] = is_null( $atts['search'] ) ? false : $atts['search'];
 
 		return $atts;
 	}
@@ -264,6 +269,11 @@ class Gravity_Forms_Count_Datatable {
 		// Set form id's to query.
 		$formID = wp_parse_id_list( $atts['form_id'] );
 
+		$html = '';
+
+		if ( $atts['search'] ) $html .= $this->getForm();
+
+		if ( $atts['search'] ) $untrusted = $this->parseRequest( $untrusted );
 		$criteria = new Search_Criteria( $untrusted );
 
 		$sorting = null;
@@ -288,6 +298,7 @@ class Gravity_Forms_Count_Datatable {
 			foreach ( $atts['sum'] as $untrustedSumAtts ) {
 
 				$sumAtts     = $this->shortcodeAtts( $untrustedSumAtts, 'gf_count_datatable_sum_atts' );
+				if ( $atts['search'] ) $untrustedSumAtts = $this->parseRequest( $untrustedSumAtts );
 				$sumCriteria = new Search_Criteria( $untrustedSumAtts );
 				$sumEntries  = GFAPI::get_entries( $sumAtts['form_id'], $sumCriteria->get(), $sorting, $paging );
 
@@ -305,13 +316,11 @@ class Gravity_Forms_Count_Datatable {
 
 		if ( 0 == count( $entries ) ) {
 
-			return '<p>No results.</p>';
+			return $html . '<p>No results.</p>';
 		}
 
 		$records = $this->dedupeEntries( $entries );
 		$records = $this->setUserAndSort( $records );
-
-		$html = '';
 
 		$html .= '<table>';
 		$html .= '<thead><tr><th>Name</th><th>Count</th></tr></thead>';
@@ -357,6 +366,42 @@ class Gravity_Forms_Count_Datatable {
 		$html .= '</tbody>';
 		$html .= "<tfoot><tr><th></th><th>{$this->countFormat( $total, $atts )}</th></tr></tfoot>";
 		$html .= '</table>';
+
+		return $html;
+	}
+
+	private function getForm() {
+
+		$createdBy = wp_unslash( $_REQUEST['created_by'] );
+
+		$html = '<form>';
+
+		$html .= '<input type="text" name="created_by" placeholder="Enter Name" value="' . esc_attr( $createdBy ) .'" /><br />';
+
+		$html .= '<select id="date_range" name="date_range">';
+		$html .= '<option value="">Choose Date Range</option>';
+		$html .= '<option value="today">Today</option>';
+		$html .= '<option value="yesterday">Yesterday</option>';
+		$html .= '<option value="this_week">This Week</option>';
+		$html .= '<option value="last_week">Last Week</option>';
+		$html .= '<option value="this_month">This Month</option>';
+		$html .= '<option value="last_month">Last Month</option>';
+		$html .= '<option value="custom">Custom</option>';
+		$html .= '</select><br /><br />';
+
+		$html .= '<div class="custom_date_range" style="display: none;">';
+		$html .= '<label for="start_date">Start Date</label>';
+		$html .= '<input class="datepicker" id="start_date" type="text" name="start_date" placeholder="mm/dd/yyyy" pattern="\d{1,2}/\d{1,2}/\d{4}" value="" /><br />';
+
+		$html .= '<label for="end_date">End Date</label>';
+		$html .= '<input class="datepicker" id="end_date"type="text" name="end_date" placeholder="mm/dd/yyyy" pattern="\d{1,2}/\d{1,2}/\d{4}" value="" /><br />';
+		$html .= '</div>';
+
+		$html .= '<br />';
+
+		$html .= '<input type="submit" value="Submit" />';
+
+		$html .= '</form><br />';
 
 		return $html;
 	}
@@ -464,6 +509,75 @@ class Gravity_Forms_Count_Datatable {
 		}
 
 		return $count;
+	}
+
+	private function parseRequest( $untrusted ) {
+
+		$search = isset( $_REQUEST['created_by'] ) ? wp_unslash( trim( $_REQUEST['created_by'] ) ) : '';
+
+		if ( empty( $search ) ) {
+
+			return $untrusted;
+		}
+
+		$result = $this->userSearch( $search );
+
+		error_log( $search );
+		error_log( var_export( $result, true ) );
+
+		if ( ! empty( $result ) ) {
+
+			$user = reset( $result );
+			$untrusted['created_by'] = $user->ID;
+
+		} else {
+
+			// No WP User found.
+			$untrusted['created_by'] = -1;
+		}
+
+		return $untrusted;
+	}
+
+	/**
+	 * @param $search
+	 *
+	 * @return array
+	 */
+	private function userSearch( $search ) {
+
+		$query = new WP_User_Query(
+			array(
+				//'search'     => "$search*",
+				'search_columns' => array(
+					'ID',
+					'user_login',
+					'user_nicename',
+					'user_email',
+					//'user_url',
+				),
+				'fields'     => array(
+					'ID',
+				),
+				'meta_query' => array(
+					'relation' => 'OR',
+					array(
+						'key'     => 'first_name',
+						'value'   => $search,
+						'compare' => 'LIKE',
+					),
+					array(
+						'key'     => 'last_name',
+						'value'   => $search,
+						'compare' => 'LIKE',
+					),
+				),
+				'orderby'    => 'ID',
+				'order'      => 'ASC',
+			)
+		);
+
+		return $query->get_results();
 	}
 }
 
