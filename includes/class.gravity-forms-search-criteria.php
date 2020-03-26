@@ -49,14 +49,6 @@ class Search_Criteria {
 	private $criteria = array();
 
 	/**
-	 * @return string
-	 */
-	public function getCreatedBy() {
-
-		return $this->createdBy;
-	}
-
-	/**
 	 * Search_Criteria constructor.
 	 *
 	 * @param array $untrusted
@@ -100,12 +92,20 @@ class Search_Criteria {
 	}
 
 	/**
+	 * @return string
+	 */
+	public function getCreatedBy() {
+
+		return $this->createdBy;
+	}
+
+	/**
 	 * Query form submissions based on WP User ID.
 	 *
 	 * Set to `current` to filter by the current logged in WP User.
 	 * Set to `0` to remove filter.
 	 *
-	 * @param int|string $createdBy WP User ID or `current`.
+	 * @param int|string|array $createdBy WP User ID or `current` or array of WP User IDs.
 	 *
 	 * @return Search_Criteria
 	 */
@@ -114,6 +114,10 @@ class Search_Criteria {
 		if ( 'current' === $createdBy || is_numeric( $createdBy ) ) {
 
 			$this->createdBy = is_numeric( $createdBy ) ? absint( $createdBy ) : $createdBy;
+
+		} elseif ( is_array( $createdBy ) ) {
+
+			$this->createdBy = array_map( 'absint', $createdBy );
 		}
 
 		return $this;
@@ -505,7 +509,9 @@ class Search_Criteria {
 
 		if ( ! empty( $createdBy ) ) {
 
-			$this->criteria['field_filters']['created_by'] = array( 'key' => 'created_by', 'value' => $createdBy );
+			$operator = is_array( $createdBy ) ? 'IN' : 'IS';
+
+			$this->criteria['field_filters']['created_by'] = array( 'key' => 'created_by', 'operator' => $operator, 'value' => $createdBy );
 
 		} elseif ( array_key_exists( 'field_filters', $this->criteria ) &&
 		           array_key_exists( 'created_by', $this->criteria['field_filters'] )

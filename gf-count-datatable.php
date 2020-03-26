@@ -583,14 +583,14 @@ class Gravity_Forms_Count_Datatable {
 
 			$result = $this->userSearch( $created_by );
 
-			error_log( $created_by );
-			error_log( var_export( $result, true ) );
+			//error_log( $created_by );
+			//error_log( var_export( $result, true ) );
 
 			if ( ! empty( $result ) ) {
 
 				// Search returns an array, use the first WP User object.
-				$user = reset( $result );
-				$untrusted['created_by'] = $user->ID;
+				//$ID = reset( $result );
+				$untrusted['created_by'] = $result;
 
 			} else {
 
@@ -683,38 +683,98 @@ class Gravity_Forms_Count_Datatable {
 	 */
 	private function userSearch( $search ) {
 
-		$query = new WP_User_Query(
-			array(
-				//'search'     => "$search*",
-				'search_columns' => array(
-					'ID',
-					'user_login',
-					'user_nicename',
-					'user_email',
-					//'user_url',
-				),
-				'fields'     => array(
-					'ID',
-				),
-				'meta_query' => array(
-					'relation' => 'OR',
-					array(
-						'key'     => 'first_name',
-						'value'   => $search,
-						'compare' => 'LIKE',
-					),
-					array(
-						'key'     => 'last_name',
-						'value'   => $search,
-						'compare' => 'LIKE',
-					),
-				),
-				'orderby'    => 'ID',
-				'order'      => 'ASC',
-			)
-		);
+		$results = array();
+		$terms   = explode( ' ', $search );
 
-		return $query->get_results();
+		/*
+		 * First search for the User by first and/or last name.
+		 */
+		foreach ( $terms as $term ) {
+
+			$query = new WP_User_Query(
+				array(
+					'fields'     => array(
+						'ID',
+					),
+					'meta_query' => array(
+						'relation' => 'OR',
+						array(
+							'key'     => 'first_name',
+							'value'   => $term,
+							'compare' => 'LIKE',
+						),
+						array(
+							'key'     => 'last_name',
+							'value'   => $term,
+							'compare' => 'LIKE',
+						),
+					),
+					'orderby'    => 'ID',
+					'order'      => 'ASC',
+				)
+			);
+
+			$result = $query->get_results();
+
+			$resultIDs = wp_list_pluck( $result, 'ID' );
+
+			if ( empty( $results ) ) {
+
+				$results = array_merge( $results, $resultIDs );
+
+			} else {
+
+				if ( ! empty( $resultIDs ) ) {
+
+					$results = array_unique( array_intersect( $results, $resultIDs ) );
+				}
+			}
+
+		}
+
+		/*
+		 * If User is not found by first and/or last name, then search the WP User fields.
+		 */
+		foreach ( $terms as $term ) {
+
+			$query = new WP_User_Query(
+				array(
+					'search' => "$term*",
+					'search_columns' => array(
+						//'ID',
+						'user_login',
+						'user_nicename',
+						'display_name',
+						//'user_email',
+						//'user_url',
+					),
+					'fields'     => array(
+						'ID',
+					),
+					'orderby'    => 'ID',
+					'order'      => 'ASC',
+				)
+			);
+
+			$result = $query->get_results();
+
+			$resultIDs = wp_list_pluck( $result, 'ID' );
+
+			if ( empty( $results ) ) {
+
+				$results = array_merge( $results, $resultIDs );
+
+			} else {
+
+				if ( ! empty( $resultIDs ) ) {
+
+					$results = array_unique( array_merge( $results, $resultIDs ) );
+				}
+			}
+
+		}
+
+		return $results;
 	}
 }
 
