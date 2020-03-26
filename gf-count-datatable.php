@@ -21,6 +21,7 @@
 
 namespace Easy_Plugins\Gravity_Forms_Count_Datatable;
 
+use DateTime;
 use GFAPI;
 use GFForms;
 use WP_User;
@@ -129,6 +130,18 @@ class Gravity_Forms_Count_Datatable {
 	}
 
 	/**
+	 * Get the absolute directory path (with trailing slash) for the plugin.
+	 *
+	 * @since 1.0
+	 *
+	 * @return string
+	 */
+	public function pluginPath() {
+
+		return $this->path;
+	}
+
+	/**
 	 * @since 1.0
 	 *
 	 * @return string
@@ -143,10 +156,20 @@ class Gravity_Forms_Count_Datatable {
 	 */
 	public function registerScripts() {
 
-		$url = Gravity_Forms_Count_Datatable()->getBaseURL();
+		$path = Gravity_Forms_Count_Datatable()->pluginPath();
+		$url  = Gravity_Forms_Count_Datatable()->getBaseURL();
 
 		// If SCRIPT_DEBUG is set and TRUE load the non-minified JS files, otherwise, load the minified files.
 		$min = defined('SCRIPT_DEBUG') && SCRIPT_DEBUG ? '' : '.min';
+		$min = '';
+
+		wp_register_script(
+			'Easy_Plugins\Gravity_Forms_Count_Datatable\JavaScript\Frontend',
+			"{$url}assets/js/frontend$min.js",
+			array( 'jquery' ),
+			self::VERSION . '-' . filemtime( "{$path}assets/js/frontend$min.js" ),
+			TRUE
+		);
 	}
 
 	/**
@@ -400,34 +423,41 @@ class Gravity_Forms_Count_Datatable {
 		$html .= "<tfoot><tr><th>{$atts['tfoot'][0]}</th><th>{$atts['tfoot'][1]}</th></tr></tfoot>";
 		$html .= '</table>';
 
+		wp_enqueue_script( 'Easy_Plugins\Gravity_Forms_Count_Datatable\JavaScript\Frontend' );
+
 		return $html;
 	}
 
 	private function getForm() {
 
 		$createdBy = wp_unslash( $_REQUEST['created_by'] );
+		$dateRange = wp_unslash( $_REQUEST['date_range'] );
+		$startDate = filter_var( preg_replace( '([^0-9/] | [^0-9-])', '', htmlentities( $_REQUEST['start_date'] ) ) );
+		$endDate   = filter_var( preg_replace( '([^0-9/] | [^0-9-])', '', htmlentities( $_REQUEST['end_date'] ) ) );
 
-		$html = '<form>';
+
+		$html = '<form id="datatable_search_form" action="#datatable_search_form">';
 
 		$html .= '<input type="text" name="created_by" placeholder="Enter Name" value="' . esc_attr( $createdBy ) .'" /><br />';
 
+		$html .= '<label for="date_range">Date Range</label>';
 		$html .= '<select id="date_range" name="date_range">';
-		$html .= '<option value="">Choose Date Range</option>';
-		$html .= '<option value="today">Today</option>';
-		$html .= '<option value="yesterday">Yesterday</option>';
-		$html .= '<option value="this_week">This Week</option>';
-		$html .= '<option value="last_week">Last Week</option>';
-		$html .= '<option value="this_month">This Month</option>';
-		$html .= '<option value="last_month">Last Month</option>';
-		$html .= '<option value="custom">Custom</option>';
+		$html .= '<option value="">Choose</option>';
+		$html .= '<option value="today" ' . selected( $dateRange, 'today', false ) . '>Today</option>';
+		$html .= '<option value="yesterday" ' . selected( $dateRange, 'yesterday', false ) . '>Yesterday</option>';
+		$html .= '<option value="this_week" ' . selected( $dateRange, 'this_week', false ) . '>This Week</option>';
+		$html .= '<option value="last_week" ' . selected( $dateRange, 'last_week', false ) . '>Last Week</option>';
+		$html .= '<option value="this_month" ' . selected( $dateRange, 'this_month', false ) . '>This Month</option>';
+		$html .= '<option value="last_month" ' . selected( $dateRange, 'last_month', false ) . '>Last Month</option>';
+		$html .= '<option value="custom" ' . selected( $dateRange, 'custom', false ) . '>Custom</option>';
 		$html .= '</select><br /><br />';
 
-		$html .= '<div class="custom_date_range" style="display: none;">';
+		$html .= '<div id="custom_date_range" style="display: ' . ( 'custom' === $dateRange ? 'block' : 'none' ) . ';">';
 		$html .= '<label for="start_date">Start Date</label>';
-		$html .= '<input class="datepicker" id="start_date" type="text" name="start_date" placeholder="mm/dd/yyyy" pattern="\d{1,2}/\d{1,2}/\d{4}" value="" /><br />';
+		$html .= '<input class="datepicker" id="start_date" type="text" name="start_date" placeholder="mm/dd/yyyy" pattern="\d{1,2}/\d{1,2}/\d{4}" value="' . esc_attr( $startDate ) .'" /><br />';
 
 		$html .= '<label for="end_date">End Date</label>';
-		$html .= '<input class="datepicker" id="end_date"type="text" name="end_date" placeholder="mm/dd/yyyy" pattern="\d{1,2}/\d{1,2}/\d{4}" value="" /><br />';
+		$html .= '<input class="datepicker" id="end_date"type="text" name="end_date" placeholder="mm/dd/yyyy" pattern="\d{1,2}/\d{1,2}/\d{4}" value="' . esc_attr( $endDate ) .'" /><br />';
 		$html .= '</div>';
 
 		$html .= '<br />';
@@ -546,28 +576,102 @@ class Gravity_Forms_Count_Datatable {
 
 	private function parseRequest( $untrusted ) {
 
-		$search = isset( $_REQUEST['created_by'] ) ? wp_unslash( trim( $_REQUEST['created_by'] ) ) : '';
+		//error_log( var_export( $_REQUEST, true ) );
+		$created_by = isset( $_REQUEST['created_by'] ) ? wp_unslash( trim( $_REQUEST['created_by'] ) ) : '';
 
-		if ( empty( $search ) ) {
+		if ( ! empty( $created_by ) ) {
 
-			return $untrusted;
+			$result = $this->userSearch( $created_by );
+
+			error_log( $created_by );
+			error_log( var_export( $result, true ) );
+
+			if ( ! empty( $result ) ) {
+
+				// Search returns an array, use the first WP User object.
+				$user = reset( $result );
+				$untrusted['created_by'] = $user->ID;
+
+			} else {
+
+				// No WP User found.
+				$untrusted['created_by'] = -1;
+			}
 		}
 
-		$result = $this->userSearch( $search );
+		switch ( $_REQUEST['date_range'] ) {
 
-		error_log( $search );
-		error_log( var_export( $result, true ) );
+			case 'today':
 
-		if ( ! empty( $result ) ) {
+				$untrusted['start_date']  = 'today';
+				$untrusted['date_format'] = 'relative';
+				break;
 
-			$user = reset( $result );
-			$untrusted['created_by'] = $user->ID;
+			case 'yesterday':
 
-		} else {
+				$untrusted['start_date']  = 'yesterday';
+				$untrusted['end_date']    = 'yesterday';
+				$untrusted['date_format'] = 'relative';
+				break;
 
-			// No WP User found.
-			$untrusted['created_by'] = -1;
+			case 'this_week':
+
+				$untrusted['start_date']  = '-1 week sunday';
+				$untrusted['date_format'] = 'relative';
+				break;
+
+			case 'last_week':
+
+				$untrusted['start_date']  = '-2 week sunday';
+				$untrusted['end_date']    = '-1 week saturday';
+				$untrusted['date_format'] = 'relative';
+				break;
+
+			case 'this_month':
+
+				$untrusted['start_date']  = 'first day of this month';
+				$untrusted['date_format'] = 'relative';
+				break;
+
+			case 'last_month':
+
+				$untrusted['start_date']  = 'first day of last month';
+				$untrusted['end_date']    = 'last day of last month';
+				$untrusted['date_format'] = 'relative';
+				break;
+
+			case 'custom':
+
+				$date      = new DateTime();
+				$startDate = filter_var( preg_replace( '([^0-9/] | [^0-9-])', '', htmlentities( $_REQUEST['start_date'] ) ) );
+				$endDate   = filter_var( preg_replace( '([^0-9/] | [^0-9-])', '', htmlentities( $_REQUEST['end_date'] ) ) );
+
+				if ( false !== $startDate ) {
+
+					$time = strtotime( $startDate );
+
+					if ( false !== $time ) {
+
+						$date->setTimestamp( $time );
+						$untrusted['start_date'] = $date->format( 'm/d/Y' );
+					}
+				}
+
+				if ( false !== $endDate ) {
+
+					$time = strtotime( $endDate );
+
+					if ( false !== $time ) {
+
+						$date->setTimestamp( $time );
+						$untrusted['end_date'] = $date->format( 'm/d/Y' );
+					}
+				}
+
+				break;
 		}
+
+		//error_log( var_export( $untrusted, true ) );
 
 		return $untrusted;
 	}
@@ -575,7 +679,7 @@ class Gravity_Forms_Count_Datatable {
 	/**
 	 * @param $search
 	 *
-	 * @return array
+	 * @return WP_User[]
 	 */
 	private function userSearch( $search ) {
 

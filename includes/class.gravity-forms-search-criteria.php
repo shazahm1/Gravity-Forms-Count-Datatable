@@ -610,7 +610,7 @@ class Search_Criteria {
 
 		$this->prepare();
 
-		error_log( var_export( $this->criteria, true ) );
+		//error_log( var_export( $this->criteria, true ) );
 
 		return $this->criteria;
 	}
