@@ -187,7 +187,7 @@ class Gravity_Forms_Count_Datatable {
 			'dec_point'        => '.',
 			'thousands_sep'    => ',',
 			'page_size'        => 10000, // Use page_size='20000' or higher in shortcode for more entries to count
-			'search'           => true,
+			'search'           => false,
 			'thead'            => 'Name|Count',
 			'tfoot'            => '|%sum%'
 			//'number_field'     => false,
