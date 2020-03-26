@@ -32,12 +32,14 @@ The following parameters are valid for both shortcodes.
 
 The following parameters are valid for the `[gf_count_datatable]` shortcode.
 
+- `search` *bool* :: Whether or not to enable search, by name and/or date range, for the datatable.
 - `thead` *string* :: The table column headers. Table column header values are delimited by a `|` (pipe). Default: `Name|Count`
 - `tfoot` *string* :: The table column footers. Table column footer values are delimited by a `|` (pipe). Default: `|%sum%`
    - The `tfoot` parameter support two token. They are `%average%` and `%sum%`. The `%average%` token is replaced by the average of the total count. The `%sum%` token is replace by the total count.
 
 **NOTES:**
 
+- The `seach` parameter can only be enabled for a single instance of the `[gf_count_datatable]` per page.
 - To filter entry count by the current logged in user set `created_by` to `current`.
 - Multiple field filters can be supplied in a shortcode by appending `_{+d}` to the `filter_field`, `filter_operator`, `filter_value` shortcode parameters. Example: `form_id='2' filter_field_1='3' filter_value_1='Developer' filter_field_2='5' filter_value_2='Undecided'`.
    - You can add as many filters as you wish, simply increment the trailing digit.
