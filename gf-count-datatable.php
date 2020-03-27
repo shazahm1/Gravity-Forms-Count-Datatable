@@ -126,7 +126,8 @@ class Gravity_Forms_Count_Datatable {
 		add_shortcode( 'gf_count_entries', array( $this, 'countEntries' ) );
 		add_shortcode( 'gf_count_datatable', array( $this, 'countDatatable' ) );
 
-		add_action( 'wp_enqueue_scripts', array( $this, 'registerScripts' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'registerScripts' ), -1 );
+		add_action( 'wp_enqueue_scripts', array( $this, 'maybeEnqueueCSS' ), 1 );
 	}
 
 	/**
@@ -153,6 +154,8 @@ class Gravity_Forms_Count_Datatable {
 
 	/**
 	 * Callback for the `wp_enqueue_scripts` action.
+	 *
+	 * @since 1.0
 	 */
 	public function registerScripts() {
 
@@ -161,15 +164,72 @@ class Gravity_Forms_Count_Datatable {
 
 		// If SCRIPT_DEBUG is set and TRUE load the non-minified JS files, otherwise, load the minified files.
 		$min = defined('SCRIPT_DEBUG') && SCRIPT_DEBUG ? '' : '.min';
-		$min = '';
+		//$min = '';
+
+		wp_register_style(
+			'materialize',
+			"{$url}includes/vendor/materialize/css/materialize{$min}.css",
+			array(),
+			'1.0.0-' . filemtime( "{$path}includes/vendor/materialize/css/materialize{$min}.css" )
+		);
+
+		wp_register_script(
+			'Easy_Plugins\Gravity_Forms_Count_Datatable\JavaScript\Vendor\Materialize',
+			"{$url}includes/vendor/materialize/js/materialize{$min}.js",
+			array(),
+			'1.0.0-' . filemtime( "{$path}includes/vendor/materialize/js/materialize{$min}.js" ),
+			TRUE
+		);
 
 		wp_register_script(
 			'Easy_Plugins\Gravity_Forms_Count_Datatable\JavaScript\Frontend',
-			"{$url}assets/js/frontend$min.js",
-			array( 'jquery' ),
-			self::VERSION . '-' . filemtime( "{$path}assets/js/frontend$min.js" ),
+			"{$url}assets/js/frontend.js",
+			array(
+				'jquery',
+				'Easy_Plugins\Gravity_Forms_Count_Datatable\JavaScript\Vendor\Materialize',
+			),
+			self::VERSION . '-' . filemtime( "{$path}assets/js/frontend.js" ),
 			TRUE
 		);
+	}
+
+	/**
+	 * Callback for the `wp_enqueue_scripts` action.
+	 *
+	 * @since 1.0
+	 */
+	public function maybeEnqueueCSS() {
+
+		global $post, $wpdb;
+
+		if ( ! $post instanceof \WP_Post ) {
+
+			return;
+		}
+
+		$needle       = '[gf_count_datatable';
+		$hasShortcode = false;
+
+		if ( false !== strpos( $post->post_content, $needle ) ) {
+
+			$hasShortcode = true;
+
+		} else {
+
+			$result = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT count(*) FROM {$wpdb->postmeta} WHERE post_id = %d and meta_value LIKE '%{$needle}%'",
+					$post->ID
+				)
+			);
+
+			$hasShortcode = ! empty( $result );
+		}
+
+		if ( $hasShortcode ) {
+
+			wp_enqueue_style( 'materialize' );
+		}
 	}
 
 	/**
@@ -364,7 +424,7 @@ class Gravity_Forms_Count_Datatable {
 		$records = $this->dedupeEntries( $entries );
 		$records = $this->setUserAndSort( $records );
 
-		$html .= '<table>';
+		$html .= '<table class="striped">';
 		$html .= "<thead><tr><th>{$atts['thead'][0]}</th><th>{$atts['thead'][1]}</th></tr></thead>";
 		$html .= '<tbody>';
 
@@ -435,14 +495,20 @@ class Gravity_Forms_Count_Datatable {
 		$startDate = filter_var( preg_replace( '([^0-9/] | [^0-9-])', '', htmlentities( $_REQUEST['start_date'] ) ) );
 		$endDate   = filter_var( preg_replace( '([^0-9/] | [^0-9-])', '', htmlentities( $_REQUEST['end_date'] ) ) );
 
-
+		$html .= '<div class="row">';
 		$html = '<form id="datatable_search_form" action="#datatable_search_form">';
 
-		$html .= '<input type="text" name="created_by" placeholder="Enter Name" value="' . esc_attr( $createdBy ) .'" /><br />';
+		$html .= '<div class="row">';
+		$html .= '<div class="input-field">';
+		$html .= '<input type="text" id="created_by" name="created_by" value="' . esc_attr( $createdBy ) .'" />';
+		$html .= '<label for="created_by">Enter Name</label>';
+		$html .= '</div>';
+		$html .= '</div>';
 
-		$html .= '<label for="date_range">Date Range</label>';
+		$html .= '<div class="row">';
+		$html .= '<div class="input-field">';
 		$html .= '<select id="date_range" name="date_range">';
-		$html .= '<option value="">Choose</option>';
+		$html .= '<option value="" disabled ' . selected( $dateRange, '', false ) . '>Choose</option>';
 		$html .= '<option value="today" ' . selected( $dateRange, 'today', false ) . '>Today</option>';
 		$html .= '<option value="yesterday" ' . selected( $dateRange, 'yesterday', false ) . '>Yesterday</option>';
 		$html .= '<option value="this_week" ' . selected( $dateRange, 'this_week', false ) . '>This Week</option>';
@@ -450,21 +516,35 @@ class Gravity_Forms_Count_Datatable {
 		$html .= '<option value="this_month" ' . selected( $dateRange, 'this_month', false ) . '>This Month</option>';
 		$html .= '<option value="last_month" ' . selected( $dateRange, 'last_month', false ) . '>Last Month</option>';
 		$html .= '<option value="custom" ' . selected( $dateRange, 'custom', false ) . '>Custom</option>';
-		$html .= '</select><br /><br />';
-
-		$html .= '<div id="custom_date_range" style="display: ' . ( 'custom' === $dateRange ? 'block' : 'none' ) . ';">';
-		$html .= '<label for="start_date">Start Date</label>';
-		$html .= '<input class="datepicker" id="start_date" type="text" name="start_date" placeholder="mm/dd/yyyy" pattern="\d{1,2}/\d{1,2}/\d{4}" value="' . esc_attr( $startDate ) .'" /><br />';
-
-		$html .= '<label for="end_date">End Date</label>';
-		$html .= '<input class="datepicker" id="end_date"type="text" name="end_date" placeholder="mm/dd/yyyy" pattern="\d{1,2}/\d{1,2}/\d{4}" value="' . esc_attr( $endDate ) .'" /><br />';
+		$html .= '</select>';
+		$html .= '<label for="date_range">Date Range</label>';
+		$html .= '</div>';
 		$html .= '</div>';
 
-		$html .= '<br />';
+		$html .= '<div id="custom_date_range" style="display: ' . ( 'custom' === $dateRange ? 'block' : 'none' ) . ';">';
 
-		$html .= '<input type="submit" value="Submit" />';
+		$html .= '<div class="row">';
+		$html .= '<div class="input-field">';
+		$html .= '<input type="text" class="datepicker" id="start_date" name="start_date" pattern="\d{1,2}/\d{1,2}/\d{4}" value="' . esc_attr( $startDate ) .'" />';
+		$html .= '<label for="start_date">Start Date (mm/dd/yyyy)</label>';
+		$html .= '</div>';
+		$html .= '</div>';
 
-		$html .= '</form><br />';
+		$html .= '<div class="row">';
+		$html .= '<div class="input-field">';
+		$html .= '<input type="text" class="datepicker" id="end_date" name="end_date" pattern="\d{1,2}/\d{1,2}/\d{4}" value="' . esc_attr( $endDate ) .'" />';
+		$html .= '<label for="end_date">End Date (mm/dd/yyyy)</label>';
+		$html .= '</div>';
+		$html .= '</div>';
+
+		$html .= '</div>';
+
+		$html .= '<div class="row" style="text-align: right;">';
+		$html .= '<button class="btn waves-effect waves-light" type="submit" />Search</button>';
+		$html .= '</div>';
+
+		$html .= '</form>';
+		$html .= '</div>';
 
 		return $html;
 	}

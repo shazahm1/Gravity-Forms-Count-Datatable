@@ -4,6 +4,13 @@
 	// 	$( '#date_range' ).trigger( 'change' );
 	// } );
 
+	$( document ).ready( function() {
+		$( 'select#date_range' ).formSelect();
+		$( '.datepicker' ).datepicker({
+			format: 'mm/dd/yyyy'
+		});
+	} );
+
 	$( '#date_range' ).on( 'change', function() {
 
 		var selected = $( this ).val();
