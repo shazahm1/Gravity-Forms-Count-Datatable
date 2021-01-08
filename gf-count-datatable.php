@@ -495,8 +495,8 @@ class Gravity_Forms_Count_Datatable {
 		$startDate = filter_var( preg_replace( '([^0-9/] | [^0-9-])', '', htmlentities( $_REQUEST['start_date'] ) ) );
 		$endDate   = filter_var( preg_replace( '([^0-9/] | [^0-9-])', '', htmlentities( $_REQUEST['end_date'] ) ) );
 
-		$html .= '<div class="row">';
-		$html = '<form id="datatable_search_form" action="#datatable_search_form">';
+		$html = '<div class="row">';
+		$html .= '<form id="datatable_search_form" action="#datatable_search_form">';
 
 		$html .= '<div class="row">';
 		$html .= '<div class="input-field">';
