@@ -893,6 +893,135 @@ add_filter(
 );
 
 /**
+ * @link https://laubsterboy.com/blog/2015/07/search-wordpress-users-by-name/
+ *
+ * user_search_by_multiple_parameters
+ *
+ * Modifies the wp_user_query to allow for User searching (within the WordPress dashboard > Users > All Users) by:
+ *    first_name
+ *    last_name
+ *    nickname
+ *    any other custom meta_key added to user profiles (manually or through something like Advanced Custom Fields)
+ *
+ * @param object $wp_user_query a WordPress query object
+ *
+ * @return   object    $wp_user_query  a modified version of the WordPress query object parameter
+ */
+function user_search_by_multiple_parameters( $wp_user_query ) {
+
+	if ( false === strpos( $wp_user_query->query_where, '@' ) && ! empty( $_GET["s"] ) ) {
+		global $wpdb;
+
+		$user_ids          = array();
+		$user_ids_per_term = array();
+
+		// Usermeta fields to search
+		$usermeta_keys = array( 'first_name', 'last_name', 'nickname' );
+
+		$query_string_meta  = "";
+		$search_terms       = $_GET["s"];
+		$search_terms_array = explode( ' ', $search_terms );
+
+		// Search users for each search term (word) individually
+		foreach ( $search_terms_array as $search_term ) {
+			// reset ids per loop
+			$user_ids_per_term = array();
+
+			// add all custom fields into the query
+			if ( ! empty( $usermeta_keys ) ) {
+				$query_string_meta = "meta_key='" . implode( "' OR meta_key='", $wpdb->escape( $usermeta_keys ) ) . "'";
+			}
+error_log( $query_string_meta );
+			// Query usermeta table
+			$usermeta_results = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT DISTINCT user_id FROM $wpdb->usermeta WHERE (" . $query_string_meta . ") AND LOWER(meta_value) LIKE '%%%s%%'",
+					$search_term
+				)
+			);
+error_log( var_export( $usermeta_results, true ) );
+			foreach ( $usermeta_results as $usermeta_result ) {
+				if ( ! in_array( $usermeta_result->user_id, $user_ids_per_term ) ) {
+					array_push( $user_ids_per_term, $usermeta_result->user_id );
+				}
+			}
+
+			// Query users table
+			$users_results = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT DISTINCT ID FROM $wpdb->users WHERE LOWER(user_nicename) LIKE '%%%s%%' OR LOWER(user_email) LIKE '%%%s%%' OR LOWER(display_name) LIKE '%%%s%%'",
+					$search_term,
+					$search_term,
+					$search_term
+				)
+			);
+
+			foreach ( $users_results as $users_result ) {
+				if ( ! in_array( $users_result->ID, $user_ids_per_term ) ) {
+					array_push( $user_ids_per_term, $users_result->ID );
+				}
+			}
+
+			// Limit results to matches of all search terms
+			if ( empty( $user_ids ) ) {
+				$user_ids = array_merge( $user_ids, $user_ids_per_term );
+			} else {
+				if ( ! empty( $user_ids_per_term ) ) {
+					$user_ids = array_unique( array_intersect( $user_ids, $user_ids_per_term ) );
+				}
+			}
+		}
+
+		// Convert IDs to comma separated string
+		$ids_string = implode( ',', $user_ids );
+error_log( $ids_string );
+error_log( $wp_user_query->query_where );
+		if ( ! empty( $ids_string ) ) {
+			//// network users search (multisite)
+			//$wp_user_query->query_where = str_replace(
+			//	"user_nicename LIKE '" . $wpdb->esc_like( $search_terms ) . "'",
+			//	"ID IN(" . $ids_string . ")",
+			//	$wp_user_query->query_where
+			//);
+
+			//// site (blog) users search
+			//$wp_user_query->query_where = str_replace(
+			//	"user_nicename LIKE '%" . $wpdb->esc_like( $search_terms ) . "%'",
+			//	"ID IN(" . $ids_string . ")",
+			//	$wp_user_query->query_where
+			//);
+
+			//// network/site users search by number (WordPress assumes user ID number)
+			//$wp_user_query->query_where = str_replace(
+			//	"ID = '" . $search_terms . "'",
+			//	"ID = '" . $search_terms . "' OR ID IN(" . $ids_string . ")",
+			//	$wp_user_query->query_where
+			//);
+
+			$search_meta = "ID IN ($ids_string)";
+
+			$wp_user_query->query_where = str_replace(
+				'WHERE 1=1 AND (',
+				'WHERE 1=1 AND ( ' . $search_meta . ' AND ',
+				$wp_user_query->query_where
+			);
+
+			$wp_user_query->query_where = str_replace(
+				'AND (user_login',
+				'OR (user_login',
+				$wp_user_query->query_where
+			);
+
+error_log( $wp_user_query->query_where );
+		}
+	}
+
+	return $wp_user_query;
+}
+
+//add_action( 'pre_user_query', __NAMESPACE__ . '\user_search_by_multiple_parameters' );
+
+/**
  * @since 1.0
  *
  * @return Gravity_Forms_Count_Datatable
