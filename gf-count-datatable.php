@@ -1,4 +1,4 @@
-<?
+<?php
 /**
  * Plugin Name:       Gravity Forms: Count Datatable
  * Plugin URI:        https://connections-pro.com
